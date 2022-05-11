@@ -5,6 +5,9 @@ This is an analysis of police shootings around the United States from 2010 to 20
 The goal of this project is to analyze statistics on police shootings and construct visual representations which allow us to better understand how various factors correlate with incident outcome (fatal vs. not fatal)
 I will be focusing on the interactions between suspects’ age, race, and status of armament along with the race and number of officers present.
 
+## Dataset
+I will be using a dataset from Vice News with data of police shooting incidents from around the country
+
 ## Conclusions: 
 ### Gender: 
 The density ridges plot shows that female suspects are far less likely than male suspects to be shot at in an incident with the police. Additionally, in this dataset, only Black women had incidents with the police. 
