@@ -1,0 +1,247 @@
+---
+title: "Police Violence Analysis"
+author: "Benjamin Wang"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr);library(jtools);library(tidyverse);library(ggridges)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r load}
+data1 <- read_csv("/Users/benjamin/Desktop/216 Files/ViceNews_FullOISData - Sheet1.csv")
+data2 <- read_csv("/Users/benjamin/Desktop/216 Files/fatal-police-shootings-data.csv")
+View(data1)
+
+```
+
+
+# Intro
+In this project, I aim to analyze statistics on police shootings and construct visual representations which allow us to better understand how various factors correlate with the fatality of the incident.
+
+I will be focusing on the interactions between suspects' age, race, and status of armament along with the race and number of officers present.
+
+
+# Graph 1
+```{r Gender & Shots}
+plotdata1 <- data1 %>%
+  filter(SubjectGender != "U") %>%
+  filter(SubjectGender != "N/A") %>%
+  filter(SubjectRace != "U") %>%
+  filter(SubjectRace != "O") %>%
+  filter(SubjectRace != "NA") %>%
+  #filter(SubjectGender == "M") %>%
+  filter(Fatal != "U") %>%
+  filter(NumberOfShots == as.numeric(NumberOfShots)) %>%
+  mutate(NShots = as.numeric(NumberOfShots)) %>%
+  group_by(SubjectGender, SubjectRace) %>%
+  group_by(Fatal)
+
+ggplot(plotdata1, aes(NShots, SubjectRace, color = SubjectGender)) + 
+  stat_density_ridges(alpha = 0.5) + 
+  facet_wrap(~Fatal) + 
+  ggtitle('Number of Shots by Gender, Face, and Fatality') + 
+  labs(x = "Number of Shots Fired", y = "Race")
+```
+
+# Graph 2
+```{r}
+plotdata2 <- data1 %>%
+  filter(Fatal != "U") %>%
+  filter(NumberOfShots == as.numeric(NumberOfShots)) %>%
+  mutate(NShots = as.numeric(NumberOfShots)) %>%
+  mutate("Shots" = case_when(
+    NShots >= 50 ~ '50+',
+    NShots >= 45 ~ "45-49",
+    NShots >= 40 ~ "40-44",
+    NShots >= 35 ~ "35-30",
+    NShots >= 30 ~ "30-34",
+    NShots >= 25 ~ "25-29",
+    NShots >= 20 ~ "20-24",
+    NShots >= 15 ~ "15-19",
+    NShots >= 10 ~ "10-14",
+    NShots >= 5 ~ "5-9",
+    NShots >= 0 ~ "0-5") ) %>%
+  group_by(Fatal)
+
+ggplot(plotdata2, aes(x=NShots)) + 
+  geom_bar() + 
+  facet_wrap(~Fatal) + 
+  ggtitle('Fatalities and Number of Shots Fired') + 
+  labs(x = 'Number of Shots Fired', y = 'Count')
+```
+
+# Graph 3
+```{r}
+plotdata3 <- data1 %>%
+  filter(SubjectGender != "U") %>%
+  filter(SubjectGender != "N/A") %>%
+  filter(SubjectRace != "U") %>%
+  filter(SubjectRace != "O") %>%
+  filter(SubjectRace != "NA") %>%
+  filter(Fatal != "U") %>%
+  mutate(RaceMatch  = ifelse(SubjectRace == OfficerRace, 1, 0)) %>%
+  filter(NumberOfShots == as.numeric(NumberOfShots)) %>%
+  mutate(Fatal_RaceMatch  = ifelse(RaceMatch == 1 & Fatal == 'F', 1, 0)) %>%
+  mutate(NFatal_RaceMatch  = ifelse(RaceMatch == 1 & Fatal == 'N', 1, 0)) %>%
+  mutate(Fatal_NRaceMatch  = ifelse(RaceMatch == 0 & Fatal == 'F', 1, 0)) %>%
+  mutate(NFatal_NRaceMatch  = ifelse(RaceMatch == 0 & Fatal == 'N', 1, 0)) %>%
+  group_by(Fatal_RaceMatch, NFatal_RaceMatch, Fatal_NRaceMatch, NFatal_NRaceMatch)
+
+#table(plotdata3$Fatal_RaceMatch)
+#table(plotdata3$NFatal_RaceMatch)
+#table(plotdata3$Fatal_NRaceMatch)
+#table(plotdata3$NFatal_NRaceMatch)
+
+plotdata4 <- data.frame(
+  group = c("Fatal Incident w/ Same Race", "Fatal Incident & Not Same Race", "Not Fatal Incident & Same Race", "Not Fatal Incident & Not Same Race"),
+  value = c(48, 236, 83, 359))
+
+ggplot(plotdata4, aes(x="", y=value, fill=group)) +
+  geom_bar(stat="identity", width=1) +
+  coord_polar("y", start=0) +
+  ggtitle("Impact of Same-Race Suspect and Officer on Fatality") + 
+  labs(x = NULL, y = NULL)
+```
+
+# Graph 4
+```{r}
+plotdata5 <- data1 %>%
+  filter(SubjectGender != "U") %>%
+  filter(SubjectGender != "N/A") %>%
+  filter(SubjectRace != "U") %>%
+  filter(SubjectRace != "O") %>%
+  filter(SubjectRace != "NA") %>%
+  filter(Fatal != "U") %>%
+  mutate(RaceMatch  = ifelse(SubjectRace == OfficerRace, 'Same Race', 'Different Race')) %>%
+  filter(NumberOfShots == as.numeric(NumberOfShots)) %>%
+  #mutate("Fatality_and_Race" = case_when(
+    #RaceMatch = 1 & Fatal = 'F'  ~ 'FM',
+    #RaceMatch = 0 & Fatal = 'F'  ~ 'FNM',
+    #RaceMatch = 1 & Fatal = 'N'  ~ 'NFM',
+    #RaceMatch = 0 & Fatal = 'N'  ~ 'NFNM') ) %>%
+  filter(RaceMatch != "NA") %>%
+  group_by(RaceMatch) %>%
+  summarize(mean_shots = mean(as.numeric(NumberOfShots)))
+  
+ggplot(plotdata5, aes(x=RaceMatch, y=mean_shots)) +
+  geom_col() +
+  ggtitle("Impact of Same-Race Suspect and Officer on Number of Shots Fired") +
+  labs(x = "Race of Suspect and Officer", y = 'Mean Number of Shots Fired')
+  
+```
+
+# Graph 5
+```{r}
+plotdata6 <- data1 %>%
+  filter(SubjectGender != "U") %>%
+  filter(SubjectGender != "N/A") %>%
+  filter(SubjectRace != "U") %>%
+  filter(SubjectRace != "O") %>%
+  filter(SubjectRace != "NA") %>%
+  filter(Fatal != "U") %>%
+  filter(NumberOfShots == as.numeric(NumberOfShots)) %>%
+  mutate("RaceMatch" = case_when(
+    OfficerRace == 'B' & SubjectRace == 'B'  ~ 'Both Black',
+    OfficerRace == 'W' & SubjectRace == 'W'  ~ 'Both White',
+    OfficerRace == 'A' & SubjectRace == 'A'  ~ 'Both Asian',
+    OfficerRace == 'L' & SubjectRace == 'L'  ~ 'Both Latino',
+    OfficerRace != SubjectRace  ~ 'Different Races') ) %>%
+  filter(RaceMatch != "NA") %>%
+  group_by(RaceMatch) %>%
+  summarize(mean_shots = mean(as.numeric(NumberOfShots)))
+
+ggplot(plotdata6, aes(x=RaceMatch, y=mean_shots)) +
+  geom_col() +
+  ggtitle("Impact of Same-Race Suspect and Officer on Number of Shots Fired") +
+  labs(x = "Race of Suspect and Officer", y = 'Mean Number of Shots Fired')
+```
+
+# Graph 6
+```{r}
+total_same_race = 48 + 83
+pct_fatal_same = 48/total_same_race
+total_different_race = 236 + 359
+pct_fatal_different = 236/total_different_race
+
+plotdata7 <- data1 %>%
+  filter(SubjectGender != "U") %>%
+  filter(SubjectGender != "N/A") %>%
+  filter(SubjectRace != "U") %>%
+  filter(SubjectRace != "O") %>%
+  filter(SubjectRace != "NA") %>%
+  filter(Fatal != "U")
+
+#table(plotdata7$Fatal)
+pct_fatal = 958/(958+1448)
+
+print(pct_fatal_same)
+print(pct_fatal_different)
+print(pct_fatal)
+```
+36.7% of incidents where the race of the subject matched the race of the officer were fatal compared to 39.7% of incidents where the races of the subject and officer were different.
+
+# Graph 7
+```{r}
+plotdata8 <- data1 %>%
+  filter(SubjectGender != "U") %>%
+  filter(SubjectGender != "N/A") %>%
+  filter(SubjectRace != "U") %>%
+  filter(SubjectRace != "O") %>%
+  filter(SubjectRace != "NA") %>%
+  filter(Fatal != "U") %>%
+  filter(NumberOfShots == as.numeric(NumberOfShots)) %>%
+  filter(NumberOfOfficers == as.numeric(NumberOfOfficers)) %>%
+  group_by(SubjectRace,SubjectArmed) %>%
+  summarize(mean_officers = mean(as.numeric(NumberOfOfficers)))
+
+
+ggplot(plotdata8, aes(x = SubjectRace, y = mean_officers)) + 
+  geom_col() + 
+  facet_wrap(~SubjectArmed) + 
+  ggtitle('Number of Officers on the Scene by Race and Is Subject Armed') + 
+  labs(x = 'Race', y = 'Average Number of Officers')
+```
+
+# Graph 8
+```{r}
+plotdata9 <- data1 %>%
+  filter(SubjectAge == as.numeric(SubjectAge)) %>%
+  filter(NumberOfShots == as.numeric(NumberOfShots)) %>%
+  filter(NumberOfOfficers == as.numeric(NumberOfOfficers)) %>%
+  filter(NumberOfShots != 0) %>%
+  mutate("Age_Group" = case_when(
+    SubjectAge >= 70 ~ "70+",
+    SubjectAge >= 65 ~ "65-69",
+    SubjectAge >= 60 ~ "60-64",
+    SubjectAge >= 55 ~ "55-64",
+    SubjectAge >= 50 ~ "50-54",
+    SubjectAge >= 45 ~ "45-54",
+    SubjectAge >= 40 ~ "40-44",
+    SubjectAge >= 35 ~ "35-44",
+    SubjectAge >= 30 ~ "30-34",
+    SubjectAge >= 25 ~ "25-34",
+    SubjectAge >= 20 ~ "20-24",
+    SubjectAge >= 15 ~ "15-24",
+    SubjectAge >= 0 ~ "0-14") ) %>%
+  group_by(Age_Group) %>%
+  summarize(mean_shots = mean(as.numeric(NumberOfShots)), mean_officers = mean(as.numeric(NumberOfOfficers)))
+
+ggplot(plotdata9, aes(x = Age_Group, y = mean_officers)) +
+  geom_point() + 
+  geom_smooth()
+```
+
+## Appendix
+``` {r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
